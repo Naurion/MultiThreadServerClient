@@ -1,6 +1,5 @@
 package Server_part;
 
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -9,7 +8,8 @@ import java.util.List;
 public class Server {
     public static ArrayList<ServerThread> clients = new ArrayList<>();
     public static int counter;
-    public static List<ObjectOutputStream> clientStreams = new ArrayList<>();
+    public static List<UserList> users = new ArrayList<>();
+    public static ChatHistory history = new ChatHistory();
 
 
 

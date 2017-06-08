@@ -5,14 +5,15 @@ import Client_part.Message;
 import java.io.*;
 import java.net.Socket;
 
-import static Server_part.Server.clientStreams;
+import static Server_part.Server.history;
+import static Server_part.Server.users;
+
 
 public class ServerThread extends Thread {
     private ObjectInputStream messageFromClient = null;
     private ObjectOutputStream messageToClient = null;
     private Socket socket;
     private Message input;
-    private UserList users;
     private Message joinMessage = new Message("Server_bot", "Welcome to chat.");
 
     public ServerThread(Socket socket) {
@@ -28,29 +29,27 @@ public class ServerThread extends Thread {
             messageFromClient = new ObjectInputStream(this.socket.getInputStream());
             messageToClient = new ObjectOutputStream(socket.getOutputStream());
 
-            //Добавляем поток вывода для дальнейшей передачи сообщений пользователю
-            clientStreams.add(messageToClient);
-
             //Пока клиент подключен, отправляем ему сообщения
             while (socket.isConnected()) {
                 input = (Message) messageFromClient.readObject();
-                System.out.println(input.getMessage());
+                //Выводим сообщение в консоль сервера
+//                System.out.println(input.getMessage());
                 if (input.getMessage().equals("JOIN")) {
+                    //Добавляем пользователя в список и отправляем приветственное сообщение
+                    users.add(new UserList(input.getLogin(), socket, messageFromClient, messageToClient));
                     messageToClient.writeObject(joinMessage);
+                    sendHistory();
                 } else {
+                    history.addMessage(input);
                     sendMessage();
                 }
             }
         } catch (IOException e) {
             System.out.println("Client is disconnected");
-            int index = 0;
-            for (ObjectOutputStream stream : clientStreams) {
-                if (stream.equals(socket)) {
-                    clientStreams.remove(index);
-                    System.out.println("Client is remove");
-                    break;
-                } else {
-                    index++;
+            //Удаляем пользователя из списка пользователей
+            for (int i = 0; i < users.size(); i++) {
+                if (users.get(i).getSocket().equals(socket)) {
+                    users.remove(i);
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -61,11 +60,21 @@ public class ServerThread extends Thread {
     //Метод посылает сообщение всем пользователям.
     private void sendMessage() {
         try {
-            for (ObjectOutputStream stream : clientStreams) {
-                stream.writeObject(input);
+            for (int i = 0; i < users.size(); i++) {
+                users.get(i).getMessageToClient().writeObject(input);
             }
         } catch (IOException e) {
             System.out.println("Client is OUT");
+        }
+    }
+
+    private void sendHistory() {
+        try {
+            for (Message message : history.getHistory()) {
+                messageToClient.writeObject(message);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
